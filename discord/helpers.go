@@ -21,7 +21,7 @@ const MemberQuerySize = 1000
 
 type UserPatchParameters struct {
 	GuildID  string
-	Userdata game.UserData
+	Userdata UserData
 	Deaf     bool
 	Mute     bool
 	Nick     string
@@ -100,11 +100,11 @@ func getPhaseFromString(input string) game.Phase {
 
 // GetRoomAndRegionFromArgs does what it sounds like
 func getRoomAndRegionFromArgs(args []string) (string, string) {
-	roomUnprovided := locale.LocalizeSimpleMessage(&i18n.Message{
+	roomUnprovided := locale.LocalizeMessage(&i18n.Message{
 		ID:    "helpers.getRoomAndRegionFromArgs.roomUnprovided",
 		Other: "Unprovided",
 	})
-	regionUnprovided := locale.LocalizeSimpleMessage(&i18n.Message{
+	regionUnprovided := locale.LocalizeMessage(&i18n.Message{
 		ID:    "helpers.getRoomAndRegionFromArgs.regionUnprovided",
 		Other: "Unprovided",
 	})
