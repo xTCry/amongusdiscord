@@ -1,15 +1,14 @@
 package storage
 
 import (
+	"sync"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/denverquane/amongusdiscord/game"
 	"github.com/denverquane/amongusdiscord/locale"
-	"sync"
 )
 
 type GuildSettings struct {
-	GuildID               string `json:"guildID"`
-	GuildName             string `json:"guildName"`
 	CommandPrefix         string `json:"commandPrefix"`
 	DefaultTrackedChannel string `json:"defaultTrackedChannel"`
 	Language              string `json:"language"`
@@ -24,10 +23,8 @@ type GuildSettings struct {
 	lock sync.RWMutex
 }
 
-func MakeGuildSettings(guildID, guildName string) *GuildSettings {
+func MakeGuildSettings() *GuildSettings {
 	return &GuildSettings{
-		GuildID:               guildID,
-		GuildName:             guildName,
 		CommandPrefix:         ".au",
 		DefaultTrackedChannel: "",
 		Language:              locale.DefaultLang,
@@ -45,13 +42,13 @@ func (gs *GuildSettings) EmptyAdminAndRolePerms() bool {
 	return len(gs.AdminUserIDs) == 0 && len(gs.PermissionRoleIDs) == 0
 }
 
-func (gs *GuildSettings) HasAdminPerms(mem *discordgo.Member) bool {
-	if len(gs.AdminUserIDs) == 0 || mem.User == nil {
+func (gs *GuildSettings) HasAdminPerms(user *discordgo.User) bool {
+	if len(gs.AdminUserIDs) == 0 || user == nil {
 		return false
 	}
 
 	for _, v := range gs.AdminUserIDs {
-		if v == mem.User.ID {
+		if v == user.ID {
 			return true
 		}
 	}
@@ -59,7 +56,7 @@ func (gs *GuildSettings) HasAdminPerms(mem *discordgo.Member) bool {
 }
 
 func (gs *GuildSettings) HasRolePerms(mem *discordgo.Member) bool {
-	if len(gs.PermissionRoleIDs) == 0 || mem.User == nil {
+	if len(gs.PermissionRoleIDs) == 0 {
 		return false
 	}
 
