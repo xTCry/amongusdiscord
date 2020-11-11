@@ -3,12 +3,12 @@ package discord
 import (
 	"container/heap"
 	"fmt"
-	"github.com/denverquane/amongusdiscord/game"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/denverquane/amongusdiscord/game"
 	"github.com/denverquane/amongusdiscord/storage"
 )
 
