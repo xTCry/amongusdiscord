@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/denverquane/amongusdiscord/locale"
 	"github.com/denverquane/amongusdiscord/storage"
 	"github.com/jonas747/dca"
 )
@@ -43,7 +44,7 @@ type VoiceManager struct {
 
 type VoiceService interface {
 	GetChannelID() string
-	Connect(s *discordgo.Session, g *discordgo.Guild, m *discordgo.MessageCreate /* , dgs *DiscordGameState */) (err error)
+	Connect(s *discordgo.Session, g *discordgo.Guild, m *discordgo.MessageCreate) (err error)
 	Speak(phrase VoicePhrase) (msg, err error)
 }
 
@@ -89,9 +90,9 @@ type Voice struct {
 	StreamingSession *dca.StreamingSession      `json:"streamingSession"`
 	EncodingOptions  *dca.EncodeOptions         `json:"encodingOptions"`
 
-	Queue []*VoicePhrase
-	done  chan error
-	sett  *storage.GuildSettings
+	Queue     []*VoicePhrase
+	done      chan error
+	sett      *storage.GuildSettings
 	ChannelID string
 }
 
@@ -102,9 +103,8 @@ func newVoice(channelID string, sett *storage.GuildSettings) Voice {
 		StreamingSession: nil,
 		EncodingOptions:  GetDefaultAudioEncoding(),
 		sett:             sett,
-		// isInit:           false,
-		done:      make(chan error),
-		ChannelID: channelID,
+		done:             make(chan error),
+		ChannelID:        channelID,
 	}
 }
 
@@ -112,35 +112,33 @@ func (v *Voice) GetChannelID() string {
 	return v.ChannelID
 }
 
-func (voice *Voice) Connect(s *discordgo.Session, g *discordgo.Guild, m *discordgo.MessageCreate /* , dgs *DiscordGameState */) (err error) {
-	log.Println("Trynig connect...")
+func (voice *Voice) Connect(s *discordgo.Session, g *discordgo.Guild, m *discordgo.MessageCreate) (err error) {
+	if !voice.sett.GetBotSpeech() {
+		return
+	}
+
 	voice.Lock()
 	defer voice.Unlock()
 
 	channel := voice.FindChannel(s, m, g)
 
 	if channel.ChannelName == "" {
-		log.Println("Err: Chanel not found")
 		return fmt.Errorf("Chanel not found")
 	}
 
 	if !voice.IsConnected() {
-		log.Println("Trynig connect to " + channel.ChannelName)
 		voice.VoiceConnection, err = s.ChannelVoiceJoin(g.ID, channel.ChannelID, false, true)
 		if err != nil {
-			log.Println("Err connect: " + err.Error())
 			return
 		}
 	} else if channel.ChannelID != voice.VoiceConnection.ChannelID {
 		err = voice.VoiceConnection.ChangeChannel(channel.ChannelID, false, true)
 		if err != nil {
-			log.Println("Err change: " + err.Error())
 			return
 		}
 	}
 
 	if qPhrase := voice.QueueGetNext(); qPhrase != nil && !voice.IsStreaming() {
-		log.Println("reSpeak...")
 		voice.Speak(*qPhrase)
 	}
 
@@ -188,14 +186,12 @@ func (voice *Voice) Disconnect() (err error) {
 
 	err = voice.stop()
 	if err != nil {
-		log.Println("Err Stop: " + err.Error())
 		return
 	}
 
 	// Leave the voice channel
 	err = voice.VoiceConnection.Disconnect()
 	if err != nil {
-		log.Println("Err Disconnect: " + err.Error())
 		return
 	}
 
@@ -245,13 +241,13 @@ func (voice *Voice) Speak(phrase VoicePhrase) (msg, err error) {
 
 	// Make sure we're connected first
 	if !voice.IsConnected() {
-		log.Println("Not connected")
+		// log.Println("Not connected")
 		return
 	}
 
 	if voice.IsStreaming() {
 		voice.QueueAdd(&phrase)
-		log.Println("in stream..")
+		// log.Println("in stream..")
 		return
 	}
 
@@ -259,9 +255,13 @@ func (voice *Voice) Speak(phrase VoicePhrase) (msg, err error) {
 
 	// TODO: check for file existence
 
-	fileName := fmt.Sprintf("sounds/%s.mp3", string(phrase.ToString()))
+	fileName := fmt.Sprintf("sounds/%s.%s.mp3", string(phrase.ToString()), voice.sett.GetLanguage())
 	if !fileExists(fileName) {
-		return
+		// try get default lang
+		fileName := fmt.Sprintf("sounds/%s.%s.mp3", string(phrase.ToString()), locale.DefaultLang)
+		if !fileExists(fileName) {
+			return
+		}
 	}
 
 	voice.EncodingSession, err = dca.EncodeFile(fileName, voice.EncodingOptions)
@@ -278,6 +278,11 @@ func (voice *Voice) Speak(phrase VoicePhrase) (msg, err error) {
 	voice.done = make(chan error)
 	voice.StreamingSession = dca.NewStream(voice.EncodingSession, voice.VoiceConnection, voice.done)
 	voice.Unlock()
+
+	// Wait for the streaming session to finish
+	// msg = <-voice.done
+	// log.Println("The end. #1")
+
 	// TODO: make a timer if the film is clamped
 	// ticker := time.NewTicker(time.Second)
 	select {
@@ -307,7 +312,7 @@ func (voice *Voice) Speak(phrase VoicePhrase) (msg, err error) {
 	} else if phrase == SeeYouLater {
 		voice.Disconnect()
 	}
-	log.Println("The end. #1")
+	// log.Println("The end. #1")
 
 	return
 }

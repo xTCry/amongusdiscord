@@ -239,7 +239,6 @@ func (bot *Bot) handleNewGameMessage(s *discordgo.Session, m *discordgo.MessageC
 		dgs.Reset()
 	}
 
-	// dgs.VoiceData.Connect(s, g, m, dgs)
 	if v := bot.VoiceManager.GetByChannelID(m.ChannelID); v != nil {
 		v.Connect(s, g, m)
 	}

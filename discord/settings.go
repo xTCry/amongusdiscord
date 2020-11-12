@@ -28,6 +28,7 @@ const (
 	Delays
 	VoiceRules
 	Show
+	BotSpeech
 	NullSetting
 )
 
@@ -222,6 +223,24 @@ var AllSettings = []Setting{
 		},
 		aliases: []string{"sh", "s"},
 	},
+	{
+		settingType: BotSpeech,
+		name:        "botSpeech",
+		example:     "botSpeech true",
+		shortDesc: &i18n.Message{
+			ID:    "settings.AllSettings.BotSpeech.shortDesc",
+			Other: "Bot speech",
+		},
+		desc: &i18n.Message{
+			ID:    "settings.AllSettings.BotSpeech.desc",
+			Other: "Speech announcements in the voice channel.",
+		},
+		args: &i18n.Message{
+			ID:    "settings.AllSettings.BotSpeech.args",
+			Other: "<true/false>",
+		},
+		aliases: []string{"speech"},
+	},
 }
 
 func ConstructEmbedForSetting(value string, setting Setting, sett *storage.GuildSettings) discordgo.MessageEmbed {
@@ -334,6 +353,9 @@ func (bot *Bot) HandleSettingsCommand(s *discordgo.Session, m *discordgo.Message
 		}
 		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("```JSON\n%s\n```", jBytes))
 		return
+	case BotSpeech:
+		isValid = SettingBotSpeech(s, m, sett, args)
+		break
 	default:
 		s.ChannelMessageSend(m.ChannelID, sett.LocalizeMessage(&i18n.Message{
 			ID:    "settings.HandleSettingsCommand.default",
@@ -1035,4 +1057,57 @@ func SettingVoiceRules(s *discordgo.Session, m *discordgo.MessageCreate, sett *s
 			}))
 	}
 	return true
+}
+
+func SettingBotSpeech(s *discordgo.Session, m *discordgo.MessageCreate, sett *storage.GuildSettings, args []string) bool {
+	botSpeech := sett.GetBotSpeech()
+
+	if len(args) == 2 {
+		current := "false"
+		if botSpeech {
+			current = "true"
+		}
+		embed := ConstructEmbedForSetting(current, AllSettings[BotSpeech], sett)
+		s.ChannelMessageSendEmbed(m.ChannelID, &embed)
+		return false
+	}
+
+	if args[2] == "true" {
+		if botSpeech {
+			s.ChannelMessageSend(m.ChannelID, sett.LocalizeMessage(&i18n.Message{
+				ID:    "settings.SettingBotSpeech.already_true",
+				Other: "It's already true!",
+			}))
+		} else {
+			s.ChannelMessageSend(m.ChannelID, sett.LocalizeMessage(&i18n.Message{
+				ID:    "settings.SettingBotSpeech.set_true",
+				Other: "Voice announcements in the voice channel are enabled.",
+			}))
+			sett.SetBotSpeech(true)
+			return true
+		}
+	} else if args[2] == "false" {
+		if botSpeech {
+			s.ChannelMessageSend(m.ChannelID, sett.LocalizeMessage(&i18n.Message{
+				ID:    "settings.SettingBotSpeech.set_false",
+				Other: "Voice announcements in the voice channel are disabled.",
+			}))
+			sett.SetBotSpeech(false)
+			return true
+		} else {
+			s.ChannelMessageSend(m.ChannelID, sett.LocalizeMessage(&i18n.Message{
+				ID:    "settings.SettingBotSpeech.already_false",
+				Other: "It's already false!",
+			}))
+		}
+	} else {
+		s.ChannelMessageSend(m.ChannelID, sett.LocalizeMessage(&i18n.Message{
+			ID:    "settings.SettingBotSpeech.wrongArg",
+			Other: "Sorry, `{{.Arg}}` is neither `true` nor `false`.",
+		},
+			map[string]interface{}{
+				"Arg": args[2],
+			}))
+	}
+	return false
 }
