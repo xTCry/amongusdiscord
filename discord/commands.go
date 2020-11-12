@@ -586,6 +586,10 @@ func (bot *Bot) HandleCommand(isAdmin, isPermissioned bool, sett *storage.GuildS
 			dgs := bot.RedisInterface.GetReadOnlyDiscordGameState(gsr)
 			if v, ok := bot.EndGameChannels[dgs.ConnectCode]; ok {
 				v <- EndGameMessage{EndGameType: EndAndWipe}
+				if v := bot.VoiceManager.GetByChannelID(m.ChannelID); v != nil {
+					v.Connect(s, g, m)
+					go v.Speak(SeeYouLater)
+				}
 			}
 			delete(bot.EndGameChannels, dgs.ConnectCode)
 
@@ -599,6 +603,9 @@ func (bot *Bot) HandleCommand(isAdmin, isPermissioned bool, sett *storage.GuildS
 			lock, dgs := bot.RedisInterface.GetDiscordGameStateAndLock(gsr)
 			if lock == nil {
 				break
+			}
+			if v := bot.VoiceManager.GetByChannelID(m.ChannelID); v != nil {
+				v.Connect(s, g, m)
 			}
 			dgs.Running = !dgs.Running
 
@@ -614,6 +621,9 @@ func (bot *Bot) HandleCommand(isAdmin, isPermissioned bool, sett *storage.GuildS
 			lock, dgs := bot.RedisInterface.GetDiscordGameStateAndLock(gsr)
 			if lock == nil {
 				break
+			}
+			if v := bot.VoiceManager.GetByChannelID(m.ChannelID); v != nil {
+				v.Connect(s, g, m)
 			}
 			dgs.DeleteGameStateMsg(s) //delete the old message
 

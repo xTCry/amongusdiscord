@@ -51,6 +51,8 @@ func (bot *Bot) handleMessageCreate(s *discordgo.Session, m *discordgo.MessageCr
 			contents = strings.Replace(contents, prefix, "", 1)
 		}
 
+		bot.VoiceManager.AddSession(s, g, m.ChannelID, sett)
+
 		isAdmin, isPermissioned := false, false
 
 		if g.OwnerID == m.Author.ID || (len(sett.AdminUserIDs) == 0 && len(sett.PermissionRoleIDs) == 0) {
@@ -237,6 +239,11 @@ func (bot *Bot) handleNewGameMessage(s *discordgo.Session, m *discordgo.MessageC
 		dgs.Reset()
 	}
 
+	// dgs.VoiceData.Connect(s, g, m, dgs)
+	if v := bot.VoiceManager.GetByChannelID(m.ChannelID); v != nil {
+		v.Connect(s, g, m)
+	}
+
 	connectCode := generateConnectCode(m.GuildID)
 
 	dgs.ConnectCode = connectCode
@@ -245,7 +252,7 @@ func (bot *Bot) handleNewGameMessage(s *discordgo.Session, m *discordgo.MessageC
 
 	killChan := make(chan EndGameMessage)
 
-	go bot.SubscribeToGameByConnectCode(m.GuildID, connectCode, killChan)
+	go bot.SubscribeToGameByConnectCode(s, m.GuildID, connectCode, killChan)
 
 	dgs.Subscribed = true
 
@@ -389,6 +396,11 @@ func (bot *Bot) handleGameStartMessage(s *discordgo.Session, m *discordgo.Messag
 			}
 		}
 	}
+
+	if v := bot.VoiceManager.GetByChannelID(m.ChannelID); v != nil {
+		go v.Speak(NewRoomCode)
+	}
+	// go dgs.VoiceData.Speak(NewRoomCode)
 
 	dgs.CreateMessage(s, bot.gameStateResponse(dgs, sett), m.ChannelID, m.Author.ID)
 

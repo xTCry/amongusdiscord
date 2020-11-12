@@ -19,6 +19,7 @@ type GuildSettings struct {
 	VoiceRules            game.VoiceRules `json:"voiceRules"`
 	ApplyNicknames        bool            `json:"applyNicknames"`
 	UnmuteDeadDuringTasks bool            `json:"unmuteDeadDuringTasks"`
+	BotSpeechEnabled      bool            `json:"botSpeechEnabled"`
 
 	lock sync.RWMutex
 }
@@ -34,6 +35,7 @@ func MakeGuildSettings() *GuildSettings {
 		VoiceRules:            game.MakeMuteAndDeafenRules(),
 		ApplyNicknames:        false,
 		UnmuteDeadDuringTasks: false,
+		BotSpeechEnabled:      false,
 		lock:                  sync.RWMutex{},
 	}
 }
@@ -101,6 +103,14 @@ func (gs *GuildSettings) GetUnmuteDeadDuringTasks() bool {
 
 func (gs *GuildSettings) SetUnmuteDeadDuringTasks(v bool) {
 	gs.UnmuteDeadDuringTasks = v
+}
+
+func (gs *GuildSettings) GetBotSpeechEnabled() bool {
+	return gs.BotSpeechEnabled
+}
+
+func (gs *GuildSettings) SetBotSpeechEnabled(v bool) {
+	gs.BotSpeechEnabled = v
 }
 
 func (gs *GuildSettings) GetDefaultTrackedChannel() string {

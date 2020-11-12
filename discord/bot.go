@@ -1,13 +1,14 @@
 package discord
 
 import (
-	"github.com/bwmarrin/discordgo"
-	"github.com/denverquane/amongusdiscord/game"
-	"github.com/denverquane/amongusdiscord/storage"
 	"log"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/bwmarrin/discordgo"
+	"github.com/denverquane/amongusdiscord/game"
+	"github.com/denverquane/amongusdiscord/storage"
 )
 
 type Bot struct {
@@ -31,6 +32,8 @@ type Bot struct {
 	logPath string
 
 	captureTimeout int
+
+	VoiceManager *VoiceManager
 }
 
 var Version string
@@ -80,6 +83,7 @@ func MakeAndStartBot(version, commit, token, token2, url, emojiGuildID string, n
 		StorageInterface: storageInterface,
 		logPath:          logPath,
 		captureTimeout:   timeoutSecs,
+		VoiceManager:     NewVoiceManager(),
 	}
 
 	dg.AddHandler(bot.handleVoiceStateChange)
@@ -211,7 +215,7 @@ func (bot *Bot) newGuild(emojiGuildID string) func(s *discordgo.Session, m *disc
 			if lock != nil && dgs != nil && !dgs.Subscribed && dgs.ConnectCode != "" {
 				log.Println("Resubscribing to Redis events for an old game: " + connCode)
 				killChan := make(chan EndGameMessage)
-				go bot.SubscribeToGameByConnectCode(gsr.GuildID, dgs.ConnectCode, killChan)
+				go bot.SubscribeToGameByConnectCode(s, gsr.GuildID, dgs.ConnectCode, killChan)
 				dgs.Subscribed = true
 
 				bot.RedisInterface.SetDiscordGameState(dgs, lock)

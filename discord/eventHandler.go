@@ -2,10 +2,11 @@ package discord
 
 import (
 	"encoding/json"
-	"github.com/go-redis/redis/v8"
 	"log"
 	"strconv"
 	"time"
+
+	"github.com/go-redis/redis/v8"
 
 	"github.com/automuteus/galactus/broker"
 	"github.com/bwmarrin/discordgo"
@@ -24,7 +25,7 @@ type EndGameMessage struct {
 	EndGameType EndGameType
 }
 
-func (bot *Bot) SubscribeToGameByConnectCode(guildID, connectCode string, endGameChannel chan EndGameMessage) {
+func (bot *Bot) SubscribeToGameByConnectCode(s *discordgo.Session, guildID, connectCode string, endGameChannel chan EndGameMessage) {
 	log.Println("Started Redis Subscription worker for " + connectCode)
 
 	notify := broker.Subscribe(ctx, bot.RedisInterface.client, connectCode)
@@ -76,6 +77,17 @@ func (bot *Bot) SubscribeToGameByConnectCode(guildID, connectCode string, endGam
 					sett := bot.StorageInterface.GetGuildSettings(guildID)
 					bot.handleTrackedMembers(bot.SessionManager, sett, 0, NoPriority, dgsRequest)
 
+					g, err := s.State.Guild(guildID)
+					if err == nil {
+						sett := bot.StorageInterface.GetGuildSettings(guildID)
+						bot.VoiceManager.AddSession(s, g, dgs.GameStateMsg.MessageChannelID, sett)
+					}
+
+					// TODO: remake this!
+					if v := bot.VoiceManager.GetByChannelID(dgs.GameStateMsg.MessageChannelID); v != nil {
+						// v.Connect(s, g, m)
+						go v.Speak(CaptureConnected)
+					}
 					dgs.Edit(bot.SessionManager.GetPrimarySession(), bot.gameStateResponse(dgs, sett))
 					break
 				case broker.Lobby:
